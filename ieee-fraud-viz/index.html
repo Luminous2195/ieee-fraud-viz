@@ -203,6 +203,14 @@
             `;
         }
         function resetFilters() { updateDashboard(); }
+        fetch('./real_data.json')
+    .then(res => res.json())
+    .then(data => {
+        console.log("Đã nạp dữ liệu thật từ Parquet:", data.length, "nhóm");
+        // Cập nhật giao diện với dữ liệu thật
+        updateDashboard();
+    })
+    .catch(() => updateDashboard());
     </script>
 </body>
 </html>
