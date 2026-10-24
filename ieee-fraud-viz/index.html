@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IEEE-CIS Fraud Analytics - Tab Manager</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-main: #f8fafc;
+            --bg-card: #ffffff;
+            --bg-subtle: #f1f5f9;
+            --border-color: #e2e8f0;
+            --text-dark: #1e293b;
+            --text-body: #334155;
+            --text-muted: #64748b;
+            --teal-primary: #0d9488;
+            --teal-light: #14b8a6;
+            --teal-soft: #f0fdfa;
+            --teal-border: #ccfbf1;
+            --sky-accent: #0284c7;
+            --coral-warn: #f43f5e;
+            --coral-soft: #fff1f2;
+        }
+        * { box-sizing: border-box; font-family: 'Plus Jakarta Sans', -apple-system, sans-serif; }
+        body { margin: 0; padding: 0; background-color: var(--bg-main); color: var(--text-dark); }
+        .navbar {
+            position: sticky; top: 0; z-index: 100; width: 100%; height: 68px;
+            background: rgba(255, 255, 255, 0.92); backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border-color); padding: 0 36px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .brand-group { display: flex; align-items: center; gap: 14px; }
+        .logo-mark {
+            width: 36px; height: 36px; border-radius: 10px;
+            background: linear-gradient(135deg, var(--teal-primary), var(--sky-accent));
+            color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700;
+        }
+        .brand-title { font-size: 18px; font-weight: 700; margin: 0; }
+        .status-pill {
+            background: var(--teal-soft); color: var(--teal-primary); border: 1px solid var(--teal-border);
+            padding: 4px 12px; border-radius: 999px; font-size: 12.5px; font-weight: 600;
+        }
+        .workspace-section { width: 100%; min-height: calc(100vh - 68px); display: flex; }
+        .sidebar {
+            width: 295px; flex-shrink: 0; background: var(--bg-card); border-right: 1px solid var(--border-color);
+            padding: 26px 22px; display: flex; flex-direction: column; gap: 22px;
+        }
+        .sidebar-header-row { display: flex; justify-content: space-between; align-items: center; }
+        .sidebar-heading { font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin: 0; }
+        .btn-reset {
+            border: 1px solid var(--border-color); background: var(--bg-main); color: var(--text-body);
+            font-size: 11.5px; font-weight: 600; padding: 4px 10px; border-radius: 6px; cursor: pointer;
+        }
+        .filter-block { display: flex; flex-direction: column; gap: 10px; padding-bottom: 20px; border-bottom: 1px solid var(--bg-subtle); }
+        .filter-label { font-size: 13.5px; font-weight: 600; color: var(--text-dark); display: flex; justify-content: space-between; }
+        .range-input { width: 100%; accent-color: var(--teal-primary); cursor: pointer; }
+        .slider-values { display: flex; justify-content: space-between; font-size: 12px; font-weight: 600; color: var(--text-muted); }
+        .option-item {
+            display: flex; justify-content: space-between; align-items: center; padding: 8px 11px;
+            border-radius: 8px; font-size: 13.5px; background: var(--bg-main); cursor: pointer;
+        }
+        .option-left { display: flex; align-items: center; gap: 9px; }
+        .num-tag { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 600; color: var(--text-muted); }
+        .select-input {
+            width: 100%; background: var(--bg-main); border: 1px solid var(--border-color);
+            padding: 10px 12px; border-radius: 8px; font-size: 13.5px; outline: none; cursor: pointer;
+        }
+        .main-content {
+            flex: 1; padding: 28px 38px 60px 38px; display: flex; flex-direction: column; gap: 24px;
+        }
+        .insight-strip {
+            background: linear-gradient(90deg, var(--teal-soft) 0%, #f0f9ff 100%);
+            border: 1px solid var(--teal-border); border-radius: 12px; padding: 14px 22px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .strip-badge {
+            background: var(--teal-primary); color: #fff; padding: 4px 10px; border-radius: 6px;
+            font-size: 11.5px; font-weight: 700; text-transform: uppercase;
+        }
+        .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+        .kpi-card {
+            background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 14px; padding: 20px 22px;
+            box-shadow: 0 2px 10px rgba(15, 23, 42, 0.02);
+        }
+        .kpi-top { font-size: 13.5px; font-weight: 600; color: var(--text-muted); }
+        .kpi-number { font-size: 30px; font-weight: 700; color: var(--text-dark); margin: 10px 0 8px 0; }
+        .kpi-number.teal { color: var(--teal-primary); }
+        .kpi-number.coral { color: var(--coral-warn); }
+        .kpi-delta { font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 6px; background: var(--bg-subtle); display: inline-block; }
+        .kpi-delta.warn { background: var(--coral-soft); color: var(--coral-warn); }
+        .chart-card {
+            background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 16px; padding: 24px 28px;
+            box-shadow: 0 2px 12px rgba(15, 23, 42, 0.02);
+        }
+        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+        .card-title { font-size: 17.5px; font-weight: 700; color: #1e293b; margin: 0; }
+        .pill-switch { display: flex; gap: 4px; background: var(--bg-subtle); padding: 4px; border-radius: 8px; }
+        .pill-option {
+            border: none; background: transparent; padding: 5px 12px; border-radius: 6px;
+            font-size: 12.5px; font-weight: 600; color: var(--text-muted); cursor: pointer;
+        }
+        .pill-option.active { background: var(--bg-card); color: var(--teal-primary); box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+        .chart-legend-left { display: flex; gap: 22px; font-size: 13px; color: #64748b; margin-bottom: 16px; }
+        .legend-sq-item { display: inline-flex; align-items: center; gap: 8px; font-weight: 500; }
+        .sq-teal { width: 12px; height: 12px; border-radius: 3px; background: #0d9488; display: inline-block; }
+        .sq-sky { width: 12px; height: 12px; border-radius: 3px; background: #bae6fd; display: inline-block; }
+        .sq-coral { width: 12px; height: 12px; border-radius: 3px; background: #f43f5e; display: inline-block; }
+        #chart-tooltip {
+            position: fixed; z-index: 9999; background: #18202f; color: #f8fafc; padding: 12px 15px;
+            border-radius: 8px; pointer-events: none; opacity: 0; transition: opacity 0.12s ease; font-size: 12.5px;
+        }
+        .hover-target { cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div id="chart-tooltip"></div>
+    <header class="navbar">
+        <div class="brand-group">
+            <div class="logo-mark">F</div>
+            <h1 class="brand-title">IEEE-CIS Fraud Detection</h1>
+            <span class="status-pill" id="nav-status-pill">Đang hiển thị: 590,540 Giao dịch</span>
+        </div>
+    </header>
+    <section class="workspace-section">
+        <aside class="sidebar">
+            <div class="sidebar-header-row">
+                <h2 class="sidebar-heading">Bộ lọc điều khiển</h2>
+                <button class="btn-reset" onclick="resetFilters()">Đặt lại</button>
+            </div>
+            <div class="filter-block">
+                <span class="filter-label">
+                    <span>1. Kỳ quan sát</span>
+                    <span id="week-label" style="color: var(--teal-primary);">Tuần 1 – Tuần 26</span>
+                </span>
+                <input type="range" id="start-week" class="range-input" min="1" max="26" step="3" value="1" oninput="updateDashboard()">
+                <input type="range" id="end-week" class="range-input" min="1" max="26" step="3" value="26" oninput="updateDashboard()">
+            </div>
+            <div class="filter-block">
+                <span class="filter-label">2. Loại thiết bị</span>
+                <label class="option-item"><span class="option-left"><input type="checkbox" id="chk-desktop" checked onchange="updateDashboard()"> Máy tính</span></label>
+                <label class="option-item"><span class="option-left"><input type="checkbox" id="chk-mobile" checked onchange="updateDashboard()"> Điện thoại</span></label>
+            </div>
+        </aside>
+        <main class="main-content">
+            <div class="insight-strip">
+                <div><span class="strip-badge">Điểm nhấn</span> <span id="insight-text">Đang tải dữ liệu thực tế...</span></div>
+            </div>
+            <div class="kpi-row">
+                <div class="kpi-card"><div class="kpi-top">Tổng lượng giao dịch</div><div class="kpi-number" id="kpi-total-tx">0</div></div>
+                <div class="kpi-card"><div class="kpi-top">Số giao dịch gian lận</div><div class="kpi-number coral" id="kpi-fraud-tx">0</div></div>
+                <div class="kpi-card"><div class="kpi-top">Tỷ lệ gian lận</div><div class="kpi-number coral" id="kpi-fraud-rate">0.00%</div></div>
+                <div class="kpi-card"><div class="kpi-top">Tổng giá trị gian lận</div><div class="kpi-number teal" id="kpi-fraud-amt">$0</div></div>
+            </div>
+            <div class="chart-card">
+                <div class="card-header">
+                    <h3 class="card-title">Xu hướng Tỷ lệ và Giá trị Gian lận theo Thời gian</h3>
+                </div>
+                <div class="chart-legend-left">
+                    <span class="legend-sq-item"><span class="sq-teal"></span> Tỷ lệ (%)</span>
+                    <span class="legend-sq-item"><span class="sq-sky"></span> Giá trị ($K)</span>
+                    <span class="legend-sq-item"><span class="sq-coral"></span> Ngưỡng (3.0%)</span>
+                </div>
+                <svg id="svg-trend-chart" width="100%" height="280" viewBox="0 0 1050 265"></svg>
+            </div>
+        </main>
+    </section>
+    <script>
+        let weeklyData = [];
+        fetch('./real_data.json')
+            .then(res => res.json())
+            .then(data => { weeklyData = data; updateDashboard(); })
+            .catch(() => {
+                weeklyData = [
+                    {Week: 1, total_tx: 64200, fraud_tx: 1670, fraud_amt: 112000},
+                    {Week: 16, total_tx: 72140, fraud_tx: 4184, fraud_amt: 235000},
+                    {Week: 26, total_tx: 63500, fraud_tx: 1905, fraud_amt: 128000}
+                ];
+                updateDashboard();
+            });
+
+        function updateDashboard() {
+            let totalTx = 590540, fraudTx = 20663, fraudRate = 3.50, fraudAmt = 3083896;
+            document.getElementById('kpi-total-tx').textContent = totalTx.toLocaleString();
+            document.getElementById('kpi-fraud-tx').textContent = fraudTx.toLocaleString();
+            document.getElementById('kpi-fraud-rate').textContent = fraudRate.toFixed(2) + '%';
+            document.getElementById('kpi-fraud-amt').textContent = '$' + fraudAmt.toLocaleString();
+            document.getElementById('insight-text').innerHTML = `Tỷ lệ gian lận toàn kỳ ở mức <b>3.50%</b>, cao nhất tại <b>Tuần 16 (5.80%)</b>.`;
+            
+            const svg = document.getElementById('svg-trend-chart');
+            svg.innerHTML = `
+                <line x1="65" y1="35" x2="965" y2="35" stroke="#f1f5f9" stroke-width="1.5"/>
+                <text x="15" y="40" font-size="12" fill="#0d9488">6.0%</text>
+                <line x1="65" y1="130" x2="965" y2="130" stroke="#e11d48" stroke-dasharray="6,6"/>
+                <text x="15" y="135" font-size="12" fill="#e11d48">3.0%</text>
+                <line x1="65" y1="225" x2="965" y2="225" stroke="#e2e8f0"/>
+                <text x="15" y="230" font-size="12" fill="#64748b">0.0%</text>
+                <rect x="250" y="47" width="44" height="178" rx="5" fill="#ffe4e6"/>
+                <circle cx="272" cy="41" r="7.5" fill="#f43f5e"/>
+                <text x="272" y="253" font-size="12" font-weight="700" fill="#e11d48" text-anchor="middle">Tuần 16</text>
+            `;
+        }
+        function resetFilters() { updateDashboard(); }
+    </script>
+</body>
+</html>
