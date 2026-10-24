@@ -168,49 +168,196 @@
         </main>
     </section>
     <script>
-        let weeklyData = [];
-        fetch('./real_data.json')
-            .then(res => res.json())
-            .then(data => { weeklyData = data; updateDashboard(); })
-            .catch(() => {
-                weeklyData = [
-                    {Week: 1, total_tx: 64200, fraud_tx: 1670, fraud_amt: 112000},
-                    {Week: 16, total_tx: 72140, fraud_tx: 4184, fraud_amt: 235000},
-                    {Week: 26, total_tx: 63500, fraud_tx: 1905, fraud_amt: 128000}
-                ];
-                updateDashboard();
-            });
+    let rawDataset = [];
+    let weeklyData = [];
 
-        function updateDashboard() {
-            let totalTx = 590540, fraudTx = 20663, fraudRate = 3.50, fraudAmt = 3083896;
-            document.getElementById('kpi-total-tx').textContent = totalTx.toLocaleString();
-            document.getElementById('kpi-fraud-tx').textContent = fraudTx.toLocaleString();
-            document.getElementById('kpi-fraud-rate').textContent = fraudRate.toFixed(2) + '%';
-            document.getElementById('kpi-fraud-amt').textContent = '$' + fraudAmt.toLocaleString();
-            document.getElementById('insight-text').innerHTML = `Tỷ lệ gian lận toàn kỳ ở mức <b>3.50%</b>, cao nhất tại <b>Tuần 16 (5.80%)</b>.`;
-            
-            const svg = document.getElementById('svg-trend-chart');
-            svg.innerHTML = `
-                <line x1="65" y1="35" x2="965" y2="35" stroke="#f1f5f9" stroke-width="1.5"/>
-                <text x="15" y="40" font-size="12" fill="#0d9488">6.0%</text>
-                <line x1="65" y1="130" x2="965" y2="130" stroke="#e11d48" stroke-dasharray="6,6"/>
-                <text x="15" y="135" font-size="12" fill="#e11d48">3.0%</text>
-                <line x1="65" y1="225" x2="965" y2="225" stroke="#e2e8f0"/>
-                <text x="15" y="230" font-size="12" fill="#64748b">0.0%</text>
-                <rect x="250" y="47" width="44" height="178" rx="5" fill="#ffe4e6"/>
-                <circle cx="272" cy="41" r="7.5" fill="#f43f5e"/>
-                <text x="272" y="253" font-size="12" font-weight="700" fill="#e11d48" text-anchor="middle">Tuần 16</text>
-            `;
+    // Tải dữ liệu thật từ real_data.json
+    fetch('./real_data.json')
+        .then(res => res.json())
+        .then(data => {
+            rawDataset = data;
+            processRealData();
+            updateDashboard();
+        })
+        .catch(err => {
+            console.error("Không thể tải real_data.json, đang dùng dữ liệu dự phòng:", err);
+            // Dữ liệu fallback an toàn nếu chưa tìm thấy json
+            weeklyData = [
+                { week: 1, label: 'Tuần 1', baseRate: 2.6, baseAmtK: 112, tx: 64200 },
+                { week: 16, label: 'Tuần 16', baseRate: 5.8, baseAmtK: 235, tx: 72140 },
+                { week: 26, label: 'Tuần 26', baseRate: 3.0, baseAmtK: 128, tx: 63500 }
+            ];
+            updateDashboard();
+        });
+
+    // Xử lý dữ liệu thật từ Parquet sang biểu đồ
+    function processRealData() {
+        const grouped = {};
+        rawDataset.forEach(row => {
+            const w = row.Week;
+            if (!grouped[w]) {
+                grouped[w] = { week: w, label: `Tuần ${w}`, totalTx: 0, fraudTx: 0, fraudAmt: 0 };
+            }
+            grouped[w].totalTx += row.total_tx;
+            grouped[w].fraudTx += row.fraud_tx;
+            grouped[w].fraudAmt += row.fraud_amt;
+        });
+
+        weeklyData = Object.values(grouped).map(item => ({
+            week: item.week,
+            label: item.label,
+            baseRate: item.totalTx > 0 ? (item.fraudTx / item.totalTx) * 100 : 0,
+            baseAmtK: Math.round(item.fraudAmt / 1000),
+            tx: item.totalTx
+        })).sort((a, b) => a.week - b.week);
+    }
+
+    let currentGranularity = 'week';
+
+    function updateDashboard() {
+        if (weeklyData.length === 0) return;
+
+        const startW = parseInt(document.getElementById('start-week').value);
+        const endW = parseInt(document.getElementById('end-week').value);
+        document.getElementById('week-label').textContent = `Tuần ${startW} – Tuần ${endW}`;
+
+        // Lọc theo khoảng tuần chọn trên slider
+        const activeWeeks = weeklyData.filter(d => d.week >= startW && d.week <= endW);
+        
+        let totalTx = activeWeeks.reduce((sum, d) => sum + d.tx, 0);
+        let fraudAmtSum = activeWeeks.reduce((sum, d) => sum + (d.baseAmtK * 1000), 0);
+        
+        // Tính tổng số vụ gian lận thực tế từ tỷ lệ
+        let fraudTxSum = activeWeeks.reduce((sum, d) => sum + Math.round(d.tx * (d.baseRate / 100)), 0);
+        let avgRate = totalTx > 0 ? (fraudTxSum / totalTx) * 100 : 0;
+
+        // Cập nhật 4 thẻ KPI bằng số liệu thật
+        document.getElementById('nav-status-pill').innerHTML = `Đang hiển thị: ${totalTx.toLocaleString('en-US')} Giao dịch thực tế`;
+        document.getElementById('kpi-total-tx').textContent = totalTx.toLocaleString('en-US');
+        document.getElementById('kpi-fraud-tx').textContent = fraudTxSum.toLocaleString('en-US');
+        document.getElementById('kpi-fraud-rate').textContent = avgRate.toFixed(2) + '%';
+        document.getElementById('kpi-fraud-amt').textContent = '$' + fraudAmtSum.toLocaleString('en-US');
+
+        const rateEl = document.getElementById('kpi-fraud-rate');
+        if (avgRate > 3.0) {
+            rateEl.className = 'kpi-number coral';
+        } else {
+            rateEl.className = 'kpi-number teal';
         }
-        function resetFilters() { updateDashboard(); }
-        fetch('./real_data.json')
-    .then(res => res.json())
-    .then(data => {
-        console.log("Đã nạp dữ liệu thật từ Parquet:", data.length, "nhóm");
-        // Cập nhật giao diện với dữ liệu thật
-        updateDashboard();
-    })
-    .catch(() => updateDashboard());
-    </script>
+
+        // Tìm tuần có tỷ lệ gian lận cao nhất trong tập lọc
+        let peakPoint = activeWeeks[0] || { label: 'Tuần 16', baseRate: 5.8 };
+        activeWeeks.forEach(d => {
+            if (d.baseRate > peakPoint.baseRate) peakPoint = d;
+        });
+
+        document.getElementById('insight-text').innerHTML =
+            `Tỷ lệ gian lận từ dữ liệu thực tế đang ở mức <b>${avgRate.toFixed(2)}%</b>, đạt đỉnh cao nhất tại <b>${peakPoint.label} (${peakPoint.baseRate.toFixed(2)}%)</b>.`;
+
+        // Vẽ lại Biểu đồ 1 bằng dữ liệu thật
+        renderTrendChart(activeWeeks);
+    }
+
+    function renderTrendChart(weeks) {
+        const svg = document.getElementById('svg-trend-chart');
+        let html = `
+            <line x1="65" y1="35" x2="965" y2="35" stroke="#f1f5f9" stroke-width="1.5"/>
+            <text x="15" y="40" font-size="12.5" font-weight="700" fill="#0d9488">6.0%</text>
+            <text x="980" y="40" font-size="12.5" font-weight="600" fill="#64748b">$250K</text>
+
+            <line x1="65" y1="130" x2="965" y2="130" stroke="#e11d48" stroke-width="1.6" stroke-dasharray="6,6" opacity="0.75"/>
+            <text x="15" y="135" font-size="12.5" font-weight="700" fill="#e11d48">3.0%</text>
+            <text x="980" y="135" font-size="12.5" font-weight="600" fill="#64748b">$125K</text>
+
+            <line x1="65" y1="225" x2="965" y2="225" stroke="#e2e8f0" stroke-width="1.5"/>
+            <text x="15" y="230" font-size="12.5" font-weight="500" fill="#64748b">0.0%</text>
+            <text x="980" y="230" font-size="12.5" font-weight="600" fill="#64748b">$0K</text>
+        `;
+
+        const n = weeks.length;
+        if (n === 0) {
+            svg.innerHTML = html + `<text x="525" y="130" font-size="14" fill="#64748b" text-anchor="middle">Không có dữ liệu trong khoảng thời gian này</text>`;
+            return;
+        }
+
+        const startX = 120;
+        const endX = 940;
+        const stepX = n > 1 ? (endX - startX) / (n - 1) : 0;
+
+        let maxRate = -1;
+        weeks.forEach(w => { if (w.baseRate > maxRate) maxRate = w.baseRate; });
+
+        let polyPoints = [];
+
+        // 1. Vẽ các cột giá trị
+        weeks.forEach((w, idx) => {
+            const cx = n > 1 ? Math.round(startX + idx * stepX) : 530;
+            const barH = Math.max(8, Math.min(188, (w.baseAmtK / 250) * 190));
+            const barY = 225 - barH;
+            const isPeak = (w.baseRate === maxRate) && w.baseRate > 3.0;
+            const barColor = isPeak ? '#ffe4e6' : '#e0f2fe';
+
+            html += `
+                <rect class="hover-target" x="${cx - 20}" y="${barY}" width="40" height="${barH}" rx="5" fill="${barColor}" opacity="0.92"
+                      onmousemove="showTT(event, '${w.label}', '${isPeak ? '#f43f5e' : '#0d9488'}', '#bae6fd', 'Tỷ lệ gian lận (%): ${w.baseRate.toFixed(2)}%', 'Giá trị gian lận: $${w.baseAmtK}K', 'Ngưỡng an toàn (SLA): 3.00%')"
+                      onmouseleave="hideTT()"/>
+            `;
+        });
+
+        // 2. Tọa độ đường gấp khúc tỷ lệ
+        weeks.forEach((w, idx) => {
+            const cx = n > 1 ? Math.round(startX + idx * stepX) : 530;
+            const cy = Math.round(225 - (Math.min(6.0, w.baseRate) / 6.0) * 190);
+            polyPoints.push(`${cx},${cy}`);
+        });
+
+        html += `<polyline points="${polyPoints.join(' ')}" fill="none" stroke="#0d9488" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round"/>`;
+
+        // 3. Các điểm nút và nhãn trục X
+        weeks.forEach((w, idx) => {
+            const cx = n > 1 ? Math.round(startX + idx * stepX) : 530;
+            const cy = Math.round(225 - (Math.min(6.0, w.baseRate) / 6.0) * 190);
+            const isPeak = (w.baseRate === maxRate) && w.baseRate > 3.0;
+
+            if (isPeak) {
+                html += `
+                    <circle class="hover-target" cx="${cx}" cy="${cy}" r="7.5" fill="#f43f5e" stroke="#ffffff" stroke-width="2.5"
+                            onmousemove="showTT(event, '${w.label}', '#f43f5e', '#ffe4e6', 'Tỷ lệ gian lận (%): ${w.baseRate.toFixed(2)}%', 'Giá trị gian lận: $${w.baseAmtK}K', 'Đỉnh vượt ngưỡng an toàn')"
+                            onmouseleave="hideTT()"/>
+                `;
+            } else {
+                html += `
+                    <circle class="hover-target" cx="${cx}" cy="${cy}" r="5.5" fill="#ffffff" stroke="#0d9488" stroke-width="3"
+                            onmousemove="showTT(event, '${w.label}', '#0d9488', '#bae6fd', 'Tỷ lệ gian lận (%): ${w.baseRate.toFixed(2)}%', 'Giá trị gian lận: $${w.baseAmtK}K', 'Ngưỡng an toàn (SLA): 3.00%')"
+                            onmouseleave="hideTT()"/>
+                `;
+            }
+
+            html += `<text x="${cx}" y="253" font-size="12" font-weight="${isPeak ? '700' : '500'}" fill="${isPeak ? '#e11d48' : '#64748b'}" text-anchor="middle">${w.label}</text>`;
+        });
+
+        svg.innerHTML = html;
+    }
+
+    const tt = document.getElementById('chart-tooltip');
+    function showTT(e, title, color1, color2, line1, line2, line3) {
+        tt.innerHTML = `
+            <div class="tt-head">${title}</div>
+            <div class="tt-row"><span class="tt-sq" style="background:${color1};"></span><span>${line1}</span></div>
+            <div class="tt-row"><span class="tt-sq" style="background:${color2};"></span><span>${line2}</span></div>
+            <div class="tt-plain">${line3}</div>
+        `;
+        tt.style.opacity = '1';
+        let left = e.clientX - tt.offsetWidth - 16;
+        let top = e.clientY - (tt.offsetHeight / 2);
+        if (left < 12) left = e.clientX + 18;
+        if (top < 12) top = 12;
+        tt.style.left = left + 'px';
+        tt.style.top = top + 'px';
+    }
+
+    function hideTT() { tt.style.opacity = '0'; }
+    function resetFilters() { document.getElementById('start-week').value = 1; document.getElementById('end-week').value = 26; updateDashboard(); }
+</script>
 </body>
 </html>
